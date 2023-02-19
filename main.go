@@ -13,16 +13,14 @@ import (
 type Node struct {
 	path          string
 	bytes         int64
+	isFile        bool
 	ancestorCount int
+	sumBytes      int
 	children      []*Node
 }
 
-func New(path string) Node {
-	return Node{
-		path:     path,
-		bytes:    0,
-		children: []*Node{},
-	}
+func New(path string, isFile bool) Node {
+	return Node{path: path, isFile: isFile}
 }
 
 func main() {
@@ -48,8 +46,10 @@ func main() {
 			return err
 		}
 
-		node := New(path)
-		node.bytes = info.Size()
+		node := New(path, !info.IsDir())
+		if !info.IsDir() {
+			node.bytes = info.Size()
+		}
 
 		// Initial case
 		if dirNode == nil {
@@ -99,14 +99,23 @@ func main() {
 	}
 	//	printTree(topNode, 0)
 
-	var countAncestors func(*Node) int
-	countAncestors = func(node *Node) int {
-		count := 1
+	var countAncestors func(*Node) (int, int64)
+	countAncestors = func(node *Node) (int, int64) {
+		count := 0
+		if node.isFile {
+			count = 1
+		}
+
+		byteTotal := node.bytes
+
 		for _, child := range node.children {
-			count = count + countAncestors(child)
+			childrenCount, childrenBytes := countAncestors(child)
+			count = count + childrenCount
+			byteTotal = byteTotal + int64(childrenBytes)
 		}
 		node.ancestorCount = count
-		return count
+		node.sumBytes = int(byteTotal)
+		return count, byteTotal
 	}
 	countAncestors(topNode)
 
@@ -121,12 +130,13 @@ func main() {
 	}
 	buildList(topNode)
 
-	list.Sort(func(a, b interface{}) int { return b.(*Node).ancestorCount - a.(*Node).ancestorCount })
+	// list.Sort(func(a, b interface{}) int { return b.(*Node).ancestorCount - a.(*Node).ancestorCount })
+	list.Sort(func(a, b interface{}) int { return b.(*Node).sumBytes - a.(*Node).sumBytes })
 
 	it := list.Iterator()
 	for it.Begin(); it.Next(); {
 		value := it.Value().(*Node)
-		fmt.Printf("%v %v\n", value.ancestorCount, value.path)
+		fmt.Printf("%v %v %v\n", value.ancestorCount, value.sumBytes, value.path)
 	}
 
 	var printFlatTree func(*Node)
