@@ -6,12 +6,15 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/emirpasic/gods/lists/arraylist"
 )
 
 type Node struct {
-	path     string
-	bytes    int64
-	children []*Node
+	path          string
+	bytes         int64
+	ancestorCount int
+	children      []*Node
 }
 
 func New(path string) Node {
@@ -36,17 +39,6 @@ func main() {
 	topNode = nil
 
 	dirMap := map[string]*Node{}
-
-	// 	// Build a config map:
-	// confMap := map[string]string{}
-	// for _, v := range myconfig {
-	//     confMap[v.Key] = v.Value
-	// }
-
-	// // And then to find values by key:
-	// if v, ok := confMap["key1"]; ok {
-	//     // Found
-	// }
 
 	infos := []Node{}
 
@@ -107,12 +99,42 @@ func main() {
 	}
 	//	printTree(topNode, 0)
 
+	var countAncestors func(*Node) int
+	countAncestors = func(node *Node) int {
+		count := 1
+		for _, child := range node.children {
+			count = count + countAncestors(child)
+		}
+		node.ancestorCount = count
+		return count
+	}
+	countAncestors(topNode)
+
+	list := arraylist.New()
+
+	var buildList func(*Node)
+	buildList = func(node *Node) {
+		list.Add(node)
+		for _, child := range node.children {
+			buildList(child)
+		}
+	}
+	buildList(topNode)
+
+	list.Sort(func(a, b interface{}) int { return b.(*Node).ancestorCount - a.(*Node).ancestorCount })
+
+	it := list.Iterator()
+	for it.Begin(); it.Next(); {
+		value := it.Value().(*Node)
+		fmt.Printf("%v %v\n", value.ancestorCount, value.path)
+	}
+
 	var printFlatTree func(*Node)
 	printFlatTree = func(node *Node) {
-		fmt.Println(node.path)
+		fmt.Printf("[%v] %v\n", node.ancestorCount, node.path)
 		for _, n := range node.children {
 			printFlatTree(n)
 		}
 	}
-	printFlatTree(topNode)
+	// printFlatTree(topNode)
 }
