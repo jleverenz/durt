@@ -76,7 +76,7 @@ func main() {
 	for it.Begin(); it.Next(); {
 		value := it.Value().(*Node)
 		t.AppendRows([]table.Row{
-			{value.path, value.ancestorCount, value.sumBytes},
+			{value.path, value.ancestorCount, ByteSize(value.sumBytes)},
 		})
 		reportTotalFiles += value.ancestorCount
 		reportTotalBytes += value.sumBytes
