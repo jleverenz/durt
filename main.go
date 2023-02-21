@@ -5,9 +5,9 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/emirpasic/gods/lists/arraylist"
+	"github.com/jedib0t/go-pretty/table"
 )
 
 type Node struct {
@@ -23,14 +23,91 @@ func New(path string, isFile bool) Node {
 	return Node{path: path, isFile: isFile}
 }
 
-func main() {
-	fmt.Println("sizeup")
+type PathStat struct {
+	path string
+	stat *fs.FileInfo
+}
 
-	root := "."
+func main() {
+	args := []PathStat{{path: "."}}
+
 	if len(os.Args) > 1 {
-		root = os.Args[1]
+		args = []PathStat{}
+		for _, path := range os.Args[1:] {
+			args = append(args, PathStat{path: path})
+		}
 	}
 
+	if len(args) == 1 {
+		stat, _ := os.Stat(args[0].path)
+		args[0].stat = &stat
+
+		if stat.IsDir() {
+			entries, _ := os.ReadDir(args[0].path)
+
+			args = []PathStat{}
+			for _, entry := range entries {
+				args = append(args, PathStat{path: entry.Name()})
+			}
+		}
+	}
+
+	// Sort the list
+
+	rows := arraylist.New()
+
+	for _, pathStat := range args {
+		node := getSize(&pathStat)
+		rows.Add(node)
+	}
+
+	rows.Sort(func(a, b interface{}) int { return b.(*Node).sumBytes - a.(*Node).sumBytes })
+
+	// Output
+
+	t := table.NewWriter()
+	t.SetOutputMirror(os.Stdout)
+	t.AppendHeader(table.Row{"Path", "Files", "Bytes"})
+
+	var reportTotalFiles int
+	var reportTotalBytes int
+
+	it := rows.Iterator()
+	for it.Begin(); it.Next(); {
+		value := it.Value().(*Node)
+		t.AppendRows([]table.Row{
+			{value.path, value.ancestorCount, value.sumBytes},
+		})
+		reportTotalFiles += value.ancestorCount
+		reportTotalBytes += value.sumBytes
+	}
+
+	t.AppendFooter(table.Row{"TOTALS", reportTotalFiles, reportTotalBytes})
+	t.Render()
+}
+
+func getSize(pathStat *PathStat) *Node {
+	if pathStat.stat == nil {
+		fileInfo, _ := os.Stat(pathStat.path)
+		pathStat.stat = &fileInfo
+	}
+
+	if (*pathStat.stat).IsDir() {
+		fmt.Printf("Get DIR %v\n", pathStat.path)
+		list := collectSizes(pathStat.path)
+		node, _ := list.Get(0)
+		return node.(*Node)
+	} else {
+		fmt.Printf("Get FILE %v\n", pathStat.path)
+		node := New(pathStat.path, true)
+		node.bytes = (*pathStat.stat).Size()
+		node.sumBytes = int(node.bytes)
+		return &node
+	}
+}
+
+func collectSizes(path string) *arraylist.List {
+	fmt.Printf("Walking %v\n", path)
 	var dirNode *Node
 	dirNode = nil
 	var topNode *Node
@@ -38,9 +115,9 @@ func main() {
 
 	dirMap := map[string]*Node{}
 
-	infos := []Node{}
+	list := arraylist.New()
 
-	err := filepath.Walk(root, func(path string, info fs.FileInfo, err error) error {
+	err := filepath.Walk(path, func(path string, info fs.FileInfo, err error) error {
 		if err != nil {
 			fmt.Printf("prevent panic by handling failure accessing a path %q: %v\n", path, err)
 			return err
@@ -60,7 +137,8 @@ func main() {
 				dirMap[path] = &node
 			}
 
-			infos = append(infos, node)
+			// infos = append(infos, node)
+			list.Add(&node)
 			return nil
 		}
 
@@ -76,28 +154,14 @@ func main() {
 			dirMap[path] = &node
 		}
 
-		infos = append(infos, node)
+		list.Add(&node)
 		return nil
 	})
 
 	if err != nil {
 		fmt.Printf("error walking the path: %v\n", err)
-		return
+		return nil
 	}
-
-	for i, info := range infos {
-		fmt.Printf("PRINT %v: %+v\n", i, info)
-	}
-
-	// walk the tree
-	var printTree func(*Node, int)
-	printTree = func(node *Node, depth int) {
-		fmt.Printf("%v%v\n", strings.Repeat(" ", depth), node.path)
-		for _, n := range node.children {
-			printTree(n, depth+2)
-		}
-	}
-	//	printTree(topNode, 0)
 
 	var countAncestors func(*Node) (int, int64)
 	countAncestors = func(node *Node) (int, int64) {
@@ -119,32 +183,5 @@ func main() {
 	}
 	countAncestors(topNode)
 
-	list := arraylist.New()
-
-	var buildList func(*Node)
-	buildList = func(node *Node) {
-		list.Add(node)
-		for _, child := range node.children {
-			buildList(child)
-		}
-	}
-	buildList(topNode)
-
-	// list.Sort(func(a, b interface{}) int { return b.(*Node).ancestorCount - a.(*Node).ancestorCount })
-	list.Sort(func(a, b interface{}) int { return b.(*Node).sumBytes - a.(*Node).sumBytes })
-
-	it := list.Iterator()
-	for it.Begin(); it.Next(); {
-		value := it.Value().(*Node)
-		fmt.Printf("%v %v %v\n", value.ancestorCount, value.sumBytes, value.path)
-	}
-
-	var printFlatTree func(*Node)
-	printFlatTree = func(node *Node) {
-		fmt.Printf("[%v] %v\n", node.ancestorCount, node.path)
-		for _, n := range node.children {
-			printFlatTree(n)
-		}
-	}
-	// printFlatTree(topNode)
+	return list
 }
