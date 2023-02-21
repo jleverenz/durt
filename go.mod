@@ -1,4 +1,4 @@
-module github.com/jleverenz/sizeup
+module github.com/jleverenz/dusc
 
 go 1.19
 
