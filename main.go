@@ -37,30 +37,7 @@ type PathStat struct {
 }
 
 func main() {
-	args := []PathStat{{path: "."}}
-
-	if len(os.Args) > 1 {
-		args = []PathStat{}
-		for _, path := range os.Args[1:] {
-			args = append(args, PathStat{path: path})
-		}
-	}
-
-	if len(args) == 1 {
-		stat, _ := os.Stat(args[0].path)
-		args[0].stat = &stat
-
-		if stat.IsDir() {
-			os.Chdir(args[0].path)
-			entries, _ := os.ReadDir(".")
-
-			// expanding := args[0]
-			args = []PathStat{}
-			for _, entry := range entries {
-				args = append(args, PathStat{path: entry.Name()})
-			}
-		}
-	}
+	args := resolveArgList(os.Args)
 
 	// Create and sort the list
 
@@ -74,6 +51,34 @@ func main() {
 	sort.Sort(ByBytes(rows))
 
 	displaySortedResults(rows)
+}
+
+func resolveArgList(args []string) []PathStat {
+	resolved := []PathStat{{path: "."}}
+	if len(args) > 1 {
+		resolved = []PathStat{}
+		for _, path := range args[1:] {
+			resolved = append(resolved, PathStat{path: path})
+		}
+	}
+
+	if len(args) == 1 {
+		stat, _ := os.Stat(resolved[0].path)
+		resolved[0].stat = &stat
+
+		if stat.IsDir() {
+			os.Chdir(resolved[0].path)
+			entries, _ := os.ReadDir(".")
+
+			// expanding := args[0]
+			resolved = []PathStat{}
+			for _, entry := range entries {
+				resolved = append(resolved, PathStat{path: entry.Name()})
+			}
+		}
+	}
+
+	return resolved
 }
 
 func getSize(pathStat *PathStat) *Node {
