@@ -186,9 +186,14 @@ func displaySortedResults(nodes []*Node) {
 	// calc totals
 	var reportTotalFiles int
 	var reportTotalBytes int
+	longestNonWrap := 0
 	for _, value := range nodes {
 		reportTotalFiles += value.ancestorCount
 		reportTotalBytes += value.sumBytes
+		pathLength := len(value.path)
+		if pathLength < 80 && pathLength > longestNonWrap {
+			longestNonWrap = pathLength
+		}
 	}
 
 	for _, value := range nodes {
@@ -200,7 +205,15 @@ func displaySortedResults(nodes []*Node) {
 
 	t.AppendFooter(table.Row{"TOTALS", reportTotalFiles, ByteSize(reportTotalBytes), "100.0 %"})
 
+	nameTransformer := text.Transformer(func(val interface{}) string {
+		return text.WrapHard(val.(string), longestNonWrap)
+	})
+
 	t.SetColumnConfigs([]table.ColumnConfig{
+		{
+			Number:      1,
+			Transformer: nameTransformer,
+		},
 		{
 			Number:      4,
 			Align:       text.AlignRight,
