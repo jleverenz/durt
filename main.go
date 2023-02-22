@@ -9,7 +9,8 @@ import (
 	"sort"
 
 	"github.com/emirpasic/gods/lists/arraylist"
-	"github.com/jedib0t/go-pretty/table"
+	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/jedib0t/go-pretty/v6/text"
 )
 
 type Node struct {
@@ -179,7 +180,7 @@ func collectSizes(path string) *arraylist.List {
 
 func displaySortedResults(nodes []*Node) {
 	t := table.NewWriter()
-	t.SetOutputMirror(os.Stdout)
+
 	t.AppendHeader(table.Row{"Path", "Files", "Bytes", "Pct"})
 
 	// calc totals
@@ -197,6 +198,17 @@ func displaySortedResults(nodes []*Node) {
 		})
 	}
 
-	t.AppendFooter(table.Row{"TOTALS", reportTotalFiles, reportTotalBytes})
+	t.AppendFooter(table.Row{"TOTALS", reportTotalFiles, ByteSize(reportTotalBytes), "100.0 %"})
+
+	t.SetColumnConfigs([]table.ColumnConfig{
+		{
+			Number:      4,
+			Align:       text.AlignRight,
+			AlignHeader: text.AlignRight,
+		},
+	})
+
+	t.SetOutputMirror(os.Stdout)
+
 	t.Render()
 }
