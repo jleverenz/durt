@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
+	"sort"
 
 	"github.com/emirpasic/gods/lists/arraylist"
 	"github.com/jedib0t/go-pretty/table"
@@ -22,6 +24,12 @@ type Node struct {
 func New(path string, isFile bool) Node {
 	return Node{path: path, isFile: isFile}
 }
+
+type ByBytes []*Node
+
+func (a ByBytes) Len() int           { return len(a) }
+func (a ByBytes) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a ByBytes) Less(i, j int) bool { return a[j].sumBytes < a[i].sumBytes } // Reverse
 
 type PathStat struct {
 	path string
@@ -43,62 +51,46 @@ func main() {
 		args[0].stat = &stat
 
 		if stat.IsDir() {
+
 			entries, _ := os.ReadDir(args[0].path)
 
+			expanding := args[0]
 			args = []PathStat{}
 			for _, entry := range entries {
-				args = append(args, PathStat{path: entry.Name()})
+				// fmt.Printf("Adding %v\n", path.Join(expanding.path, entry.Name()))
+				args = append(args, PathStat{path: path.Join(expanding.path, entry.Name())})
 			}
 		}
 	}
 
-	// Sort the list
+	// Create and sort the list
 
-	rows := arraylist.New()
+	rows := []*Node{}
 
 	for _, pathStat := range args {
 		node := getSize(&pathStat)
-		rows.Add(node)
+		rows = append(rows, node)
 	}
 
-	rows.Sort(func(a, b interface{}) int { return b.(*Node).sumBytes - a.(*Node).sumBytes })
+	sort.Sort(ByBytes(rows))
 
-	// Output
-
-	t := table.NewWriter()
-	t.SetOutputMirror(os.Stdout)
-	t.AppendHeader(table.Row{"Path", "Files", "Bytes"})
-
-	var reportTotalFiles int
-	var reportTotalBytes int
-
-	it := rows.Iterator()
-	for it.Begin(); it.Next(); {
-		value := it.Value().(*Node)
-		t.AppendRows([]table.Row{
-			{value.path, value.ancestorCount, ByteSize(value.sumBytes)},
-		})
-		reportTotalFiles += value.ancestorCount
-		reportTotalBytes += value.sumBytes
-	}
-
-	t.AppendFooter(table.Row{"TOTALS", reportTotalFiles, reportTotalBytes})
-	t.Render()
+	displaySortedResults(rows)
 }
 
 func getSize(pathStat *PathStat) *Node {
 	if pathStat.stat == nil {
-		fileInfo, _ := os.Stat(pathStat.path)
+		fileInfo, err := os.Stat(pathStat.path)
+		if err != nil {
+			fmt.Println(err)
+		}
 		pathStat.stat = &fileInfo
 	}
 
 	if (*pathStat.stat).IsDir() {
-		fmt.Printf("Get DIR %v\n", pathStat.path)
 		list := collectSizes(pathStat.path)
 		node, _ := list.Get(0)
 		return node.(*Node)
 	} else {
-		fmt.Printf("Get FILE %v\n", pathStat.path)
 		node := New(pathStat.path, true)
 		node.bytes = (*pathStat.stat).Size()
 		node.sumBytes = int(node.bytes)
@@ -107,7 +99,6 @@ func getSize(pathStat *PathStat) *Node {
 }
 
 func collectSizes(path string) *arraylist.List {
-	fmt.Printf("Walking %v\n", path)
 	var dirNode *Node
 	dirNode = nil
 	var topNode *Node
@@ -184,4 +175,28 @@ func collectSizes(path string) *arraylist.List {
 	countAncestors(topNode)
 
 	return list
+}
+
+func displaySortedResults(nodes []*Node) {
+	t := table.NewWriter()
+	t.SetOutputMirror(os.Stdout)
+	t.AppendHeader(table.Row{"Path", "Files", "Bytes", "Pct"})
+
+	// calc totals
+	var reportTotalFiles int
+	var reportTotalBytes int
+	for _, value := range nodes {
+		reportTotalFiles += value.ancestorCount
+		reportTotalBytes += value.sumBytes
+	}
+
+	for _, value := range nodes {
+		pct := float64(value.sumBytes) / float64(reportTotalBytes) * 100
+		t.AppendRows([]table.Row{
+			{value.path, value.ancestorCount, ByteSize(value.sumBytes), fmt.Sprintf("%.01f %%", pct)},
+		})
+	}
+
+	t.AppendFooter(table.Row{"TOTALS", reportTotalFiles, reportTotalBytes})
+	t.Render()
 }
