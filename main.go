@@ -199,7 +199,7 @@ func displaySortedResults(nodes []*Node) {
 	for _, value := range nodes {
 		pct := float64(value.sumBytes) / float64(reportTotalBytes) * 100
 		t.AppendRows([]table.Row{
-			{value.path, value.ancestorCount, ByteSize(value.sumBytes), fmt.Sprintf("%.01f %%", pct)},
+			{value.path, value.ancestorCount, ByteSize(value.sumBytes), pct},
 		})
 	}
 
@@ -207,6 +207,14 @@ func displaySortedResults(nodes []*Node) {
 
 	nameTransformer := text.Transformer(func(val interface{}) string {
 		return text.WrapHard(val.(string), longestNonWrap)
+	})
+
+	percentTransformer := text.Transformer(func(val interface{}) string {
+		if val.(float64) < 1 {
+			return fmt.Sprintf("< 1.0 %%")
+		} else {
+			return fmt.Sprintf("%.01f %%", val)
+		}
 	})
 
 	t.SetColumnConfigs([]table.ColumnConfig{
@@ -218,6 +226,7 @@ func displaySortedResults(nodes []*Node) {
 			Number:      4,
 			Align:       text.AlignRight,
 			AlignHeader: text.AlignRight,
+			Transformer: percentTransformer,
 		},
 	})
 
