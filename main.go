@@ -41,7 +41,7 @@ type PathStat struct {
 
 type ProgramOptions struct {
 	head       bool
-	exclusions *[]string
+	exclusions []*regexp.Regexp
 }
 
 var globalOpts ProgramOptions
@@ -65,10 +65,14 @@ func main() {
 			},
 		},
 		Action: func(cCtx *cli.Context) error {
+			globalOpts.head = cCtx.Bool("head")
+
 			exclusions := cCtx.StringSlice("exclude")
-			opts := ProgramOptions{head: cCtx.Bool("head"), exclusions: &exclusions}
-			globalOpts = opts
-			mainAction(cCtx.Args().Slice(), opts)
+			for _, exc := range exclusions {
+				globalOpts.exclusions = append(globalOpts.exclusions, regexp.MustCompile(exc))
+			}
+
+			mainAction(cCtx.Args().Slice())
 			return nil
 		},
 	}
@@ -78,7 +82,7 @@ func main() {
 	}
 }
 
-func mainAction(cliArgs []string, opts ProgramOptions) {
+func mainAction(cliArgs []string) {
 	args := resolveArgList(cliArgs)
 
 	// Create and sort the list
@@ -96,16 +100,11 @@ func mainAction(cliArgs []string, opts ProgramOptions) {
 
 	sort.Sort(ByBytes(rows))
 
-	displaySortedResults(rows, opts)
+	displaySortedResults(rows)
 }
 
 func checkPathExclusion(path string) bool {
-	compiledRegexes := []*regexp.Regexp{}
-	for _, exc := range *globalOpts.exclusions {
-		compiledRegexes = append(compiledRegexes, regexp.MustCompile(exc))
-	}
-
-	for _, re := range compiledRegexes {
+	for _, re := range globalOpts.exclusions {
 		if re.MatchString(path) {
 			return true
 		}
@@ -178,18 +177,13 @@ func collectSizes(path string) *arraylist.List {
 
 	list := arraylist.New()
 
-	compiledRegexes := []*regexp.Regexp{}
-	for _, exc := range *globalOpts.exclusions {
-		compiledRegexes = append(compiledRegexes, regexp.MustCompile(exc))
-	}
-
 	err := filepath.Walk(path, func(path string, info fs.FileInfo, err error) error {
 		if err != nil {
 			fmt.Printf("prevent panic by handling failure accessing a path %q: %v\n", path, err)
 			return err
 		}
 
-		for _, re := range compiledRegexes {
+		for _, re := range globalOpts.exclusions {
 			// fmt.Println(path)
 			if re.MatchString(path) {
 				fmt.Printf("Found %v matched %v\n", re, path)
@@ -270,7 +264,7 @@ func collectSizes(path string) *arraylist.List {
 	return list
 }
 
-func displaySortedResults(nodes []*Node, opts ProgramOptions) {
+func displaySortedResults(nodes []*Node) {
 	t := table.NewWriter()
 
 	t.AppendHeader(table.Row{"Path", "Files", "Bytes", "Pct"})
@@ -288,7 +282,7 @@ func displaySortedResults(nodes []*Node, opts ProgramOptions) {
 		}
 	}
 
-	if opts.head {
+	if globalOpts.head {
 		nodes = nodes[0:20]
 	}
 
