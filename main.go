@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
-	"path"
 	"path/filepath"
 	"sort"
 
@@ -52,14 +51,13 @@ func main() {
 		args[0].stat = &stat
 
 		if stat.IsDir() {
+			os.Chdir(args[0].path)
+			entries, _ := os.ReadDir(".")
 
-			entries, _ := os.ReadDir(args[0].path)
-
-			expanding := args[0]
+			// expanding := args[0]
 			args = []PathStat{}
 			for _, entry := range entries {
-				// fmt.Printf("Adding %v\n", path.Join(expanding.path, entry.Name()))
-				args = append(args, PathStat{path: path.Join(expanding.path, entry.Name())})
+				args = append(args, PathStat{path: entry.Name()})
 			}
 		}
 	}
@@ -136,6 +134,8 @@ func collectSizes(path string) *arraylist.List {
 
 		dirPath := filepath.Dir(path)
 
+		// TODO there is a bug here if passing two directories as cli args, and one
+		// starts with "./**"
 		if dirPath != dirNode.path {
 			dirNode = dirMap[dirPath]
 		}
