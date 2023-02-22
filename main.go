@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io/fs"
+	"log"
 	"os"
 	"path/filepath"
 	"sort"
@@ -10,6 +11,7 @@ import (
 	"github.com/emirpasic/gods/lists/arraylist"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
+	"github.com/urfave/cli/v2"
 )
 
 type Node struct {
@@ -36,8 +38,36 @@ type PathStat struct {
 	stat *fs.FileInfo
 }
 
+type ProgramOptions struct {
+	head bool
+}
+
 func main() {
-	args := resolveArgList(os.Args)
+	app := &cli.App{
+		Name:  "dusc",
+		Usage: "disk utilization simple comparison",
+		Flags: []cli.Flag{
+			// TODO it'd be nice to allow --head, --head 30, etc; seems this flag
+			// parsing module doesn't support that
+			&cli.BoolFlag{
+				Name:  "head",
+				Usage: "display the top 20 records",
+			},
+		},
+		Action: func(cCtx *cli.Context) error {
+			opts := ProgramOptions{head: cCtx.Bool("head")}
+			mainAction(cCtx.Args().Slice(), opts)
+			return nil
+		},
+	}
+
+	if err := app.Run(os.Args); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func mainAction(cliArgs []string, opts ProgramOptions) {
+	args := resolveArgList(cliArgs)
 
 	// Create and sort the list
 
@@ -50,19 +80,20 @@ func main() {
 
 	sort.Sort(ByBytes(rows))
 
-	displaySortedResults(rows)
+	displaySortedResults(rows, opts)
 }
 
 func resolveArgList(args []string) []PathStat {
 	resolved := []PathStat{{path: "."}}
-	if len(args) > 1 {
+
+	if len(args) > 0 {
 		resolved = []PathStat{}
-		for _, path := range args[1:] {
+		for _, path := range args {
 			resolved = append(resolved, PathStat{path: path})
 		}
 	}
 
-	if len(args) == 1 {
+	if len(resolved) == 1 {
 		stat, _ := os.Stat(resolved[0].path)
 		resolved[0].stat = &stat
 
@@ -183,7 +214,7 @@ func collectSizes(path string) *arraylist.List {
 	return list
 }
 
-func displaySortedResults(nodes []*Node) {
+func displaySortedResults(nodes []*Node, opts ProgramOptions) {
 	t := table.NewWriter()
 
 	t.AppendHeader(table.Row{"Path", "Files", "Bytes", "Pct"})
@@ -199,6 +230,10 @@ func displaySortedResults(nodes []*Node) {
 		if pathLength < 80 && pathLength > longestNonWrap {
 			longestNonWrap = pathLength
 		}
+	}
+
+	if opts.head {
+		nodes = nodes[0:20]
 	}
 
 	for _, value := range nodes {
