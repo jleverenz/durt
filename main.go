@@ -47,8 +47,9 @@ func main() {
 	globalOpts = ProgramOptions{}
 
 	app := &cli.App{
-		Name:  "durt",
-		Usage: "disk utilization reporting tool",
+		Name:    "durt",
+		Usage:   "disk utilization reporting tool",
+		Version: "v0.0.0",
 		Flags: []cli.Flag{
 			// TODO it'd be nice to allow --head, --head 30, etc; seems this flag
 			// parsing module doesn't support that
