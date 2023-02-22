@@ -278,7 +278,9 @@ func displaySortedResults(nodes []*Node) {
 		}
 	}
 
-	if globalOpts.head && len(nodes) > 20 {
+	isHead := globalOpts.head && len(nodes) > 20
+
+	if isHead {
 		nodes = nodes[0:20]
 	}
 
@@ -289,6 +291,10 @@ func displaySortedResults(nodes []*Node) {
 		})
 	}
 
+	if isHead {
+		t.AppendRows([]table.Row{{"...", "...", "...", "..."}})
+	}
+
 	t.AppendFooter(table.Row{"TOTALS", reportTotalFiles, ByteSize(reportTotalBytes), "100.0 %"})
 
 	nameTransformer := text.Transformer(func(val interface{}) string {
@@ -296,10 +302,15 @@ func displaySortedResults(nodes []*Node) {
 	})
 
 	percentTransformer := text.Transformer(func(val interface{}) string {
-		if val.(float64) < 1 {
+		num, ok := val.(float64)
+
+		if !ok {
+			return val.(string)
+		}
+		if num < 1 {
 			return fmt.Sprintf("< 1.0 %%")
 		} else {
-			return fmt.Sprintf("%.01f %%", val)
+			return fmt.Sprintf("%.01f %%", num)
 		}
 	})
 
