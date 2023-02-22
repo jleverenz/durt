@@ -184,10 +184,7 @@ func collectSizes(path string) *arraylist.List {
 		}
 
 		for _, re := range globalOpts.exclusions {
-			// fmt.Println(path)
 			if re.MatchString(path) {
-				fmt.Printf("Found %v matched %v\n", re, path)
-
 				if info.IsDir() {
 					return fs.SkipDir
 				} else {
