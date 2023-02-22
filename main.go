@@ -279,7 +279,7 @@ func displaySortedResults(nodes []*Node) {
 		}
 	}
 
-	if globalOpts.head {
+	if globalOpts.head && len(nodes) > 20 {
 		nodes = nodes[0:20]
 	}
 
