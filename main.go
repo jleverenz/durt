@@ -9,7 +9,6 @@ import (
 	"regexp"
 	"sort"
 
-	"github.com/emirpasic/gods/lists/arraylist"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/urfave/cli/v2"
@@ -153,9 +152,9 @@ func getSize(pathStat *PathStat) *Node {
 
 	if (*pathStat.stat).IsDir() {
 		list := collectSizes(pathStat.path)
-		node, _ := list.Get(0)
+		node := list[0]
 		if node != nil {
-			return node.(*Node)
+			return node
 		} else {
 			return nil
 		}
@@ -167,7 +166,7 @@ func getSize(pathStat *PathStat) *Node {
 	}
 }
 
-func collectSizes(path string) *arraylist.List {
+func collectSizes(path string) []*Node {
 	var dirNode *Node
 	dirNode = nil
 	var topNode *Node
@@ -175,7 +174,7 @@ func collectSizes(path string) *arraylist.List {
 
 	dirMap := map[string]*Node{}
 
-	list := arraylist.New()
+	list := []*Node{}
 
 	err := filepath.Walk(path, func(path string, info fs.FileInfo, err error) error {
 		if err != nil {
@@ -208,7 +207,7 @@ func collectSizes(path string) *arraylist.List {
 			}
 
 			// infos = append(infos, node)
-			list.Add(&node)
+			list = append(list, &node)
 			return nil
 		}
 
@@ -226,7 +225,7 @@ func collectSizes(path string) *arraylist.List {
 			dirMap[path] = &node
 		}
 
-		list.Add(&node)
+		list = append(list, &node)
 		return nil
 	})
 

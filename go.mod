@@ -3,7 +3,6 @@ module github.com/jleverenz/durt
 go 1.19
 
 require (
-	github.com/emirpasic/gods v1.18.1
 	github.com/jedib0t/go-pretty/v6 v6.4.4
 	github.com/urfave/cli/v2 v2.24.4
 )
