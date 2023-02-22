@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 
 	"github.com/emirpasic/gods/lists/arraylist"
@@ -39,10 +40,15 @@ type PathStat struct {
 }
 
 type ProgramOptions struct {
-	head bool
+	head       bool
+	exclusions *[]string
 }
 
+var globalOpts ProgramOptions
+
 func main() {
+	globalOpts = ProgramOptions{}
+
 	app := &cli.App{
 		Name:  "dusc",
 		Usage: "disk utilization simple comparison",
@@ -53,9 +59,15 @@ func main() {
 				Name:  "head",
 				Usage: "display the top 20 records",
 			},
+			&cli.StringSliceFlag{
+				Name:  "exclude",
+				Usage: "exclude paths by regex",
+			},
 		},
 		Action: func(cCtx *cli.Context) error {
-			opts := ProgramOptions{head: cCtx.Bool("head")}
+			exclusions := cCtx.StringSlice("exclude")
+			opts := ProgramOptions{head: cCtx.Bool("head"), exclusions: &exclusions}
+			globalOpts = opts
 			mainAction(cCtx.Args().Slice(), opts)
 			return nil
 		},
@@ -74,13 +86,32 @@ func mainAction(cliArgs []string, opts ProgramOptions) {
 	rows := []*Node{}
 
 	for _, pathStat := range args {
-		node := getSize(&pathStat)
-		rows = append(rows, node)
+		if !checkPathExclusion(pathStat.path) {
+			node := getSize(&pathStat)
+			if node != nil {
+				rows = append(rows, node)
+			}
+		}
 	}
 
 	sort.Sort(ByBytes(rows))
 
 	displaySortedResults(rows, opts)
+}
+
+func checkPathExclusion(path string) bool {
+	compiledRegexes := []*regexp.Regexp{}
+	for _, exc := range *globalOpts.exclusions {
+		compiledRegexes = append(compiledRegexes, regexp.MustCompile(exc))
+	}
+
+	for _, re := range compiledRegexes {
+		if re.MatchString(path) {
+			return true
+		}
+	}
+
+	return false
 }
 
 func resolveArgList(args []string) []PathStat {
@@ -124,7 +155,11 @@ func getSize(pathStat *PathStat) *Node {
 	if (*pathStat.stat).IsDir() {
 		list := collectSizes(pathStat.path)
 		node, _ := list.Get(0)
-		return node.(*Node)
+		if node != nil {
+			return node.(*Node)
+		} else {
+			return nil
+		}
 	} else {
 		node := New(pathStat.path, true)
 		node.bytes = (*pathStat.stat).Size()
@@ -143,10 +178,28 @@ func collectSizes(path string) *arraylist.List {
 
 	list := arraylist.New()
 
+	compiledRegexes := []*regexp.Regexp{}
+	for _, exc := range *globalOpts.exclusions {
+		compiledRegexes = append(compiledRegexes, regexp.MustCompile(exc))
+	}
+
 	err := filepath.Walk(path, func(path string, info fs.FileInfo, err error) error {
 		if err != nil {
 			fmt.Printf("prevent panic by handling failure accessing a path %q: %v\n", path, err)
 			return err
+		}
+
+		for _, re := range compiledRegexes {
+			// fmt.Println(path)
+			if re.MatchString(path) {
+				fmt.Printf("Found %v matched %v\n", re, path)
+
+				if info.IsDir() {
+					return fs.SkipDir
+				} else {
+					return nil
+				}
+			}
 		}
 
 		node := New(path, !info.IsDir())
@@ -209,7 +262,10 @@ func collectSizes(path string) *arraylist.List {
 		node.sumBytes = int(byteTotal)
 		return count, byteTotal
 	}
-	countAncestors(topNode)
+
+	if topNode != nil {
+		countAncestors(topNode)
+	}
 
 	return list
 }
