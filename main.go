@@ -223,9 +223,17 @@ func displaySortedResults(nodes []*Node) {
 			Transformer: nameTransformer,
 		},
 		{
+			Number: 2,
+			VAlign: text.VAlignBottom,
+		},
+		{
+			Number: 3,
+			VAlign: text.VAlignBottom,
+		},
+		{
 			Number:      4,
 			Align:       text.AlignRight,
-			AlignHeader: text.AlignRight,
+			VAlign:      text.VAlignBottom,
 			Transformer: percentTransformer,
 		},
 	})
