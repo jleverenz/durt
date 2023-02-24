@@ -1,4 +1,4 @@
-package main
+package core
 
 import (
 	"fmt"
@@ -29,7 +29,7 @@ func TestUntruncatedHeadReport(t *testing.T) {
 		nodes = append(nodes, &node)
 	}
 
-	globalOpts.head = true
+	GlobalOpts.Head = true
 	lines := renderToLines(buildTable(nodes))
 	assert.Equal(t, 16, len(lines)) // 10 rows + header/footer/border
 }
@@ -44,7 +44,7 @@ func TestExactlyTruncatedHeadReport(t *testing.T) {
 		nodes = append(nodes, &node)
 	}
 
-	globalOpts.head = true
+	GlobalOpts.Head = true
 	lines := renderToLines(buildTable(nodes))
 	assert.Equal(t, 26, len(lines)) // 20 rows + header/footer/border
 }
@@ -59,7 +59,7 @@ func TestTruncatedHeadReport(t *testing.T) {
 		nodes = append(nodes, &node)
 	}
 
-	globalOpts.head = true
+	GlobalOpts.Head = true
 	lines := renderToLines(buildTable(nodes))
 	assert.Equal(t, 27, len(lines)) // 20 rows + ... + header/footer/border
 }

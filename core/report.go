@@ -1,4 +1,4 @@
-package main
+package core
 
 import (
 	"fmt"
@@ -32,7 +32,7 @@ func buildTable(nodes []*Node) table.Writer {
 		}
 	}
 
-	isHead := globalOpts.head && len(nodes) > 20
+	isHead := GlobalOpts.Head && len(nodes) > 20
 
 	if isHead {
 		nodes = nodes[0:20]
