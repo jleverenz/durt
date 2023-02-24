@@ -194,9 +194,7 @@ func collectSizes(path string) []*Node {
 		return nil
 	}
 
-	if topNode != nil {
-		countAncestors(topNode)
-	}
+	countAncestors(topNode)
 
 	return list
 }
