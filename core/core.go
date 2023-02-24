@@ -111,8 +111,7 @@ func getSize(pathStat *PathStat) *Node {
 	}
 
 	if (*pathStat.stat).IsDir() {
-		list := collectSizes(pathStat.path)
-		node := list[0]
+		node := collectSizes(pathStat.path)
 		if node != nil {
 			return node
 		} else {
@@ -126,15 +125,13 @@ func getSize(pathStat *PathStat) *Node {
 	}
 }
 
-func collectSizes(path string) []*Node {
+func collectSizes(path string) *Node {
 	var dirNode *Node
 	dirNode = nil
 	var topNode *Node
 	topNode = nil
 
 	dirMap := map[string]*Node{}
-
-	list := []*Node{}
 
 	err := filepath.Walk(path, func(path string, info fs.FileInfo, err error) error {
 		if err != nil {
@@ -166,8 +163,6 @@ func collectSizes(path string) []*Node {
 				dirMap[path] = &node
 			}
 
-			// infos = append(infos, node)
-			list = append(list, &node)
 			return nil
 		}
 
@@ -185,7 +180,6 @@ func collectSizes(path string) []*Node {
 			dirMap[path] = &node
 		}
 
-		list = append(list, &node)
 		return nil
 	})
 
@@ -196,7 +190,7 @@ func collectSizes(path string) []*Node {
 
 	countAncestors(topNode)
 
-	return list
+	return topNode
 }
 
 func countAncestors(node *Node) (int, int64) {
