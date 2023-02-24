@@ -194,28 +194,27 @@ func collectSizes(path string) []*Node {
 		return nil
 	}
 
-	var countAncestors func(*Node) (int, int64)
-	countAncestors = func(node *Node) (int, int64) {
-		count := 0
-		if node.isFile {
-			count = 1
-		}
-
-		byteTotal := node.bytes
-
-		for _, child := range node.children {
-			childrenCount, childrenBytes := countAncestors(child)
-			count = count + childrenCount
-			byteTotal = byteTotal + int64(childrenBytes)
-		}
-		node.ancestorCount = count
-		node.sumBytes = int(byteTotal)
-		return count, byteTotal
-	}
-
 	if topNode != nil {
 		countAncestors(topNode)
 	}
 
 	return list
+}
+
+func countAncestors(node *Node) (int, int64) {
+	count := 0
+	if node.isFile {
+		count = 1
+	}
+
+	byteTotal := node.bytes
+
+	for _, child := range node.children {
+		childrenCount, childrenBytes := countAncestors(child)
+		count = count + childrenCount
+		byteTotal = byteTotal + int64(childrenBytes)
+	}
+	node.ancestorCount = count
+	node.sumBytes = int(byteTotal)
+	return count, byteTotal
 }
