@@ -21,19 +21,23 @@ type walkNode struct {
 }
 
 func executeWalkStrategy(pathStats []PathStat) []PathResult {
-	pathResults := []PathResult{}
+	results := []PathResult{}
 
 	for _, pathStat := range pathStats {
 		if !checkPathExclusion(pathStat.Path) {
 			node := getSize(&pathStat)
 			if node != nil {
 
-				pathResults = append(pathResults, PathResult{Path: node.path, TotalBytes: node.sumBytes, TotalFiles: node.ancestorCount})
+				results = append(results, PathResult{
+					Path:       node.path,
+					TotalBytes: node.sumBytes,
+					TotalFiles: node.ancestorCount,
+				})
 			}
 		}
 	}
 
-	return pathResults
+	return results
 }
 
 func checkPathExclusion(path string) bool {
