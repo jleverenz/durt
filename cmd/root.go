@@ -18,7 +18,8 @@ var rootCmd = &cobra.Command{
 		for _, exc := range exclusionStrings {
 			core.GlobalOpts.Exclusions = append(core.GlobalOpts.Exclusions, regexp.MustCompile(exc))
 		}
-		core.MainAction(args)
+
+		core.MainAction(ResolveArgs(args))
 	},
 }
 

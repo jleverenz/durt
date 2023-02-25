@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"sort"
 )
 
 type Node struct {
@@ -22,15 +21,9 @@ func New(path string, isFile bool) Node {
 	return Node{path: path, isFile: isFile}
 }
 
-type ByBytes []*Node
-
-func (a ByBytes) Len() int           { return len(a) }
-func (a ByBytes) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a ByBytes) Less(i, j int) bool { return a[j].sumBytes < a[i].sumBytes } // Reverse
-
 type PathStat struct {
-	path string
-	stat *fs.FileInfo
+	Path string
+	Stat *fs.FileInfo
 }
 
 type ProgramOptions struct {
@@ -39,27 +32,29 @@ type ProgramOptions struct {
 	MyVal      string
 }
 
+type PathResult struct {
+	Path       string
+	TotalBytes int
+	TotalFiles int
+}
+
 var GlobalOpts ProgramOptions
 
-func MainAction(cliArgs []string) {
-	args := resolveArgList(cliArgs)
+func MainAction(pathStats []PathStat) {
+	pathResults := []PathResult{}
 
-	// Create and sort the list
-
-	rows := []*Node{}
-
-	for _, pathStat := range args {
-		if !checkPathExclusion(pathStat.path) {
+	for _, pathStat := range pathStats {
+		if !checkPathExclusion(pathStat.Path) {
 			node := getSize(&pathStat)
 			if node != nil {
-				rows = append(rows, node)
+
+				pathResults = append(pathResults, PathResult{Path: node.path, TotalBytes: node.sumBytes, TotalFiles: node.ancestorCount})
+				// rows = append(rows, node)
 			}
 		}
 	}
 
-	sort.Sort(ByBytes(rows))
-
-	displaySortedResults(rows)
+	displaySortedResults(pathResults)
 }
 
 func checkPathExclusion(path string) bool {
@@ -72,54 +67,25 @@ func checkPathExclusion(path string) bool {
 	return false
 }
 
-func resolveArgList(args []string) []PathStat {
-	resolved := []PathStat{{path: "."}}
-
-	if len(args) > 0 {
-		resolved = []PathStat{}
-		for _, path := range args {
-			resolved = append(resolved, PathStat{path: path})
-		}
-	}
-
-	if len(resolved) == 1 {
-		stat, _ := os.Stat(resolved[0].path)
-		resolved[0].stat = &stat
-
-		if stat.IsDir() {
-			os.Chdir(resolved[0].path)
-			entries, _ := os.ReadDir(".")
-
-			// expanding := args[0]
-			resolved = []PathStat{}
-			for _, entry := range entries {
-				resolved = append(resolved, PathStat{path: entry.Name()})
-			}
-		}
-	}
-
-	return resolved
-}
-
 func getSize(pathStat *PathStat) *Node {
-	if pathStat.stat == nil {
-		fileInfo, err := os.Stat(pathStat.path)
+	if pathStat.Stat == nil {
+		fileInfo, err := os.Stat(pathStat.Path)
 		if err != nil {
 			fmt.Println(err)
 		}
-		pathStat.stat = &fileInfo
+		pathStat.Stat = &fileInfo
 	}
 
-	if (*pathStat.stat).IsDir() {
-		node := collectSizes(pathStat.path)
+	if (*pathStat.Stat).IsDir() {
+		node := collectSizes(pathStat.Path)
 		if node != nil {
 			return node
 		} else {
 			return nil
 		}
 	} else {
-		node := New(pathStat.path, true)
-		node.bytes = (*pathStat.stat).Size()
+		node := New(pathStat.Path, true)
+		node.bytes = (*pathStat.Stat).Size()
 		node.sumBytes = int(node.bytes)
 		return &node
 	}

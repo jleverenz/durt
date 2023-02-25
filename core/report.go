@@ -3,18 +3,27 @@ package core
 import (
 	"fmt"
 	"os"
+	"sort"
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
 )
 
-func displaySortedResults(nodes []*Node) {
-	t := buildTable(nodes)
+type ByBytes []PathResult
+
+func (a ByBytes) Len() int           { return len(a) }
+func (a ByBytes) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a ByBytes) Less(i, j int) bool { return a[j].TotalBytes < a[i].TotalBytes } // Reverse
+
+func displaySortedResults(pathResults []PathResult) {
+	sort.Sort(ByBytes(pathResults))
+
+	t := buildTable(pathResults)
 	t.SetOutputMirror(os.Stdout)
 	t.Render()
 }
 
-func buildTable(nodes []*Node) table.Writer {
+func buildTable(pathResults []PathResult) table.Writer {
 	t := table.NewWriter()
 
 	t.AppendHeader(table.Row{"Path", "Files", "Bytes", "Pct"})
@@ -23,25 +32,25 @@ func buildTable(nodes []*Node) table.Writer {
 	var reportTotalFiles int
 	var reportTotalBytes int
 	longestNonWrap := 0
-	for _, value := range nodes {
-		reportTotalFiles += value.ancestorCount
-		reportTotalBytes += value.sumBytes
-		pathLength := len(value.path)
+	for _, value := range pathResults {
+		reportTotalFiles += value.TotalFiles
+		reportTotalBytes += value.TotalBytes
+		pathLength := len(value.Path)
 		if pathLength < 80 && pathLength > longestNonWrap {
 			longestNonWrap = pathLength
 		}
 	}
 
-	isHead := GlobalOpts.Head && len(nodes) > 20
+	isHead := GlobalOpts.Head && len(pathResults) > 20
 
 	if isHead {
-		nodes = nodes[0:20]
+		pathResults = pathResults[0:20]
 	}
 
-	for _, value := range nodes {
-		pct := float64(value.sumBytes) / float64(reportTotalBytes) * 100
+	for _, value := range pathResults {
+		pct := float64(value.TotalBytes) / float64(reportTotalBytes) * 100
 		t.AppendRows([]table.Row{
-			{value.path, value.ancestorCount, ByteSize(value.sumBytes), pct},
+			{value.Path, value.TotalFiles, ByteSize(value.TotalBytes), pct},
 		})
 	}
 
