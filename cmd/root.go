@@ -19,7 +19,7 @@ var rootCmd = &cobra.Command{
 			core.GlobalOpts.Exclusions = append(core.GlobalOpts.Exclusions, regexp.MustCompile(exc))
 		}
 
-		core.MainAction(ResolveArgs(args))
+		core.Execute(ResolveArgs(args))
 	},
 }
 

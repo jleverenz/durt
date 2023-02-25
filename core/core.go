@@ -8,17 +8,13 @@ import (
 	"regexp"
 )
 
-type Node struct {
+type walkNode struct {
 	path          string
 	bytes         int64
 	isFile        bool
 	ancestorCount int
 	sumBytes      int
-	children      []*Node
-}
-
-func New(path string, isFile bool) Node {
-	return Node{path: path, isFile: isFile}
+	children      []*walkNode
 }
 
 type PathStat struct {
@@ -40,7 +36,7 @@ type PathResult struct {
 
 var GlobalOpts ProgramOptions
 
-func MainAction(pathStats []PathStat) {
+func Execute(pathStats []PathStat) {
 	pathResults := []PathResult{}
 
 	for _, pathStat := range pathStats {
@@ -67,7 +63,7 @@ func checkPathExclusion(path string) bool {
 	return false
 }
 
-func getSize(pathStat *PathStat) *Node {
+func getSize(pathStat *PathStat) *walkNode {
 	if pathStat.Stat == nil {
 		fileInfo, err := os.Stat(pathStat.Path)
 		if err != nil {
@@ -84,20 +80,20 @@ func getSize(pathStat *PathStat) *Node {
 			return nil
 		}
 	} else {
-		node := New(pathStat.Path, true)
+		node := walkNode{path: pathStat.Path, isFile: true}
 		node.bytes = (*pathStat.Stat).Size()
 		node.sumBytes = int(node.bytes)
 		return &node
 	}
 }
 
-func collectSizes(path string) *Node {
-	var dirNode *Node
+func collectSizes(path string) *walkNode {
+	var dirNode *walkNode
 	dirNode = nil
-	var topNode *Node
+	var topNode *walkNode
 	topNode = nil
 
-	dirMap := map[string]*Node{}
+	dirMap := map[string]*walkNode{}
 
 	err := filepath.Walk(path, func(path string, info fs.FileInfo, err error) error {
 		if err != nil {
@@ -115,7 +111,7 @@ func collectSizes(path string) *Node {
 			}
 		}
 
-		node := New(path, !info.IsDir())
+		node := walkNode{path: path, isFile: !info.IsDir()}
 		if !info.IsDir() {
 			node.bytes = info.Size()
 		}
@@ -159,7 +155,7 @@ func collectSizes(path string) *Node {
 	return topNode
 }
 
-func countAncestors(node *Node) (int, int64) {
+func countAncestors(node *walkNode) (int, int64) {
 	count := 0
 	if node.isFile {
 		count = 1
