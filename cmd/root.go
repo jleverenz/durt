@@ -26,8 +26,9 @@ var rootCmd = &cobra.Command{
 var exclusionStrings []string
 
 func Execute() {
-	rootCmd.PersistentFlags().BoolVar(&core.GlobalOpts.Head, "head", false, "display the top 20 records (default: false)")
+	rootCmd.PersistentFlags().BoolVar(&core.GlobalOpts.Head, "head", false, "display the top 20 records")
 	rootCmd.PersistentFlags().StringArrayVar(&exclusionStrings, "exclude", []string{}, "exclude paths by regex")
+	rootCmd.PersistentFlags().StringVar(&core.GlobalOpts.Strategy, "strategy", "walk", "strategy to use: walk, shell")
 	rootCmd.Args = cobra.ArbitraryArgs
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)

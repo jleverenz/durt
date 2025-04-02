@@ -14,6 +14,7 @@ type ProgramOptions struct {
 	Head       bool
 	Exclusions []*regexp.Regexp
 	MyVal      string
+	Strategy   string
 }
 
 type PathResult struct {
@@ -25,6 +26,16 @@ type PathResult struct {
 var GlobalOpts ProgramOptions
 
 func Run(pathStats []PathStat) {
-	pathResults := WalkStrategy.Execute(pathStats)
+	var pathResults []PathResult
+
+	switch GlobalOpts.Strategy {
+	case "walk":
+		pathResults = WalkStrategy.Execute(pathStats)
+	case "shell":
+		pathResults = ShellStrategy.Execute(pathStats)
+	default:
+		panic("no strategy")
+	}
+
 	displaySortedResults(pathResults)
 }
