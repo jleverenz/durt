@@ -19,7 +19,7 @@ func ResolveArgs(args []string) []core.PathStat {
 		}
 	}
 
-	if len(resolved) == 1 {
+	if len(resolved) == 1 && core.GlobalOpts.Expand {
 		stat, _ := os.Stat(resolved[0].Path)
 		resolved[0].Stat = &stat
 

@@ -15,6 +15,7 @@ type ProgramOptions struct {
 	Exclusions []*regexp.Regexp
 	MyVal      string
 	Strategy   string
+	Expand     bool
 }
 
 type PathResult struct {
